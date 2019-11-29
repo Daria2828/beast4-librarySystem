@@ -1,4 +1,4 @@
-Beast # 4: Creating libraries out of order
+### Beast #4: Creating libraries out of order
 
 Your task is to rewrite librarySystem so that the following code works too. The only difference is that we're loading the libraries out of order (i.e. 'workBlurb' is created before its dependencies, 'name' and 'company').
 
