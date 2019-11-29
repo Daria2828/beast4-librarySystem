@@ -1,0 +1,146 @@
+<script src="simpletest.js"></script>
+<script>
+
+(function(){
+    var libraryStorage = {};
+
+    function librarySystem(libraryName, dependencyArray, callback){
+    	// Case 1: save new libraries in storage obj. 
+    	if (arguments.length > 1) {  
+   			// no dependencies: OK to run callback immediately and save its return value.
+    		if (dependencyArray.length === 0) {  
+				libraryStorage[libraryName] = callback();
+			// has dependencies: save as obj to access & run callback after all deps are loaded.
+			} else { 
+				libraryStorage[libraryName] = {
+		    		dependencyArray: dependencyArray,
+		    		callback: callback
+		    	};
+			}
+		// Case 2: retrieve stored libraries if only libraryName is passed in.
+    	} else { 
+			if (typeof libraryStorage[libraryName] === 'object') {
+				// check if all lib dependencies are stored.
+    			var allDepDefined = libraryStorage[libraryName].dependencyArray.every(function(value){ 
+	    			return value in libraryStorage;
+	    		});
+	     		if (allDepDefined === true) {
+	     			// retrieve dependency values to be passed into callback below.
+    				var dependencyValues = libraryStorage[libraryName].dependencyArray.map(function(lib){
+						return libraryStorage[lib];
+					});
+					// run callback if all deps were stored. resets lib from obj to return value of callback.
+    				libraryStorage[libraryName] = libraryStorage[libraryName].callback.apply(this, dependencyValues);
+    			} else {
+    				throw new ReferenceError('Missing one or more dependencies to run callback.');
+    			}
+    		} 
+    		return libraryStorage[libraryName];
+    	}
+    }
+    window.librarySystem = librarySystem;
+    librarySystem.view = function() {
+		return libraryStorage;
+	};
+})();
+
+var viewStorage = librarySystem.view();
+
+
+tests({
+	'It should store a new library in the libraryStorage object.': function(){
+		librarySystem('newLibrary', [], function(){
+			return 'newContents';
+		});
+		eq('newLibrary' in viewStorage, true);   
+	},
+	'It should accept an array of the required dependencies for a library and store them.': function(){
+		librarySystem('sandwichLibrary', ['meat', 'bread'], function(meat, bread){
+			return meat + ' on ' + bread + ' equals a sandwich.';
+		});
+		var libContents = viewStorage['sandwichLibrary'];
+		eq(libContents.dependencyArray[0], 'meat');
+		eq(libContents.dependencyArray[1], 'bread'); 
+	},
+	'If a dependency of a library has not been stored, it should not run the callback.': function(){
+		var timesCallbackHasRun = 0;
+		librarySystem('musicLibrary', ['bach', 'beethoven'], function(bach, beethoven){
+			timesCallbackHasRun++;
+			return bach + ' and ' + beethoven + ' are timeless pieces of music.'  
+		});
+		eq(timesCallbackHasRun, 0);
+	},
+	'If a library is called but its dependencies have not been stored, throw an error.': function(){
+		var isError = false;
+		try {
+			librarySystem('musicLibrary');
+		} catch(e) {
+			isError = (e instanceof ReferenceError);
+		}
+		eq(isError, true);
+	},
+	'If the dependencies of a library are stored, it should run the callback.': function(){
+		var timesCallbackHasRun = 0;
+		librarySystem('sandwichLibrary', ['meat', 'bread'], function(meat, bread){
+			timesCallbackHasRun++;
+			return meat + ' on ' + bread + ' equals a sandwich.';
+		});
+		librarySystem('meat', [], function(){
+			return 'Pastrami';
+		});
+		librarySystem('bread', [], function(){
+			return 'rye';
+		});
+		librarySystem('sandwichLibrary');
+		eq(timesCallbackHasRun, 1);
+	},
+	'If dependencies of a library are stored, it should return the value of its callback with dependencies passed in.': function(){
+			var result = librarySystem('sandwichLibrary');
+			eq(result, 'Pastrami on rye equals a sandwich.');
+		},
+	'It should run the callback to each library only once.': function(){
+		var workCallbackCount = 0;
+		librarySystem('workBlurb', ['name', 'company'], function(name, company){
+			workCallbackCount++;
+			return name + ' works at ' + company;
+		});
+		var nameCallbackCount = 0;
+		librarySystem('name', [], function(){
+			nameCallbackCount++;
+			return 'Gordon';
+		});
+		var compCallbackCount = 0;
+		librarySystem('company', [], function(){
+			compCallbackCount++;
+			return 'Watch and Code';
+		});
+		function callbackRunner(libName){
+			for (var i = 0; i < 100; i++) {
+				librarySystem(libName);
+			}
+		}
+		callbackRunner('workBlurb');
+		callbackRunner('name');
+		callbackRunner('company');
+		eq(workCallbackCount, 1);
+		eq(nameCallbackCount, 1);
+		eq(compCallbackCount, 1);
+	},
+	'It should be able to create & load a library out of order (if its dependencies are created after it).': function(){
+		librarySystem('composerLibrary', ['bach', 'beethoven'], function(bach, beethoven){
+			return bach + ' and ' + beethoven + ' are timeless pieces of music.'  
+		});
+		librarySystem('bach', [], function(){
+			return 'The Goldberg Variations';
+		});
+		librarySystem('beethoven', [], function(){
+			return 'Moonlight Sonata';
+		});
+		librarySystem('composerLibrary');
+
+		eq('composerLibrary' in viewStorage, true);
+		var libContents = viewStorage['composerLibrary'];
+		eq(libContents, 'The Goldberg Variations and Moonlight Sonata are timeless pieces of music.');
+	}	
+});
+</script>
