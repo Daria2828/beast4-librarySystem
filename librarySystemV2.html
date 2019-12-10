@@ -1,3 +1,6 @@
+<!DOCTYPE html>
+<html>
+
 <script src="simpletest.js"></script>
 <script>
 
@@ -5,95 +8,51 @@
     var libraryStorage = {};
 
     function librarySystem(libraryName, dependencyArray, callback){
-
-		// Case 2: retrieve stored libraries if only libraryName is passed in.
-    	} else { 
-			if (typeof libraryStorage[libraryName] === 'object') {
-				// check if all lib dependencies are stored.
-    			var allDepDefined = libraryStorage[libraryName].dependencyArray.every(function(value){ 
-	    			return value in libraryStorage;
-	    		});
-	     		if (allDepDefined === true) {
-	     			// retrieve dependency values to be passed into callback below.
-    				var dependencyValues = libraryStorage[libraryName].dependencyArray.map(function(lib){
-						return libraryStorage[lib];
-					});
-					// run callback if all deps were stored. resets lib from obj to return value of callback.
-    				libraryStorage[libraryName] = libraryStorage[libraryName].callback.apply(this, dependencyValues);
-    			} else {
-    				throw new ReferenceError('Missing one or more dependencies to run callback.');
-    			}
-    		} 
-    		return libraryStorage[libraryName];
+    	if (arguments.length === 1) {
+    		return loadLibrary(libraryName);
+    	} else {
+    		storeLibrary(libraryName, dependencyArray, callback);
     	}
     }
-
-    function storeLibrary(){
-    	if (arguments.length > 1) {  
-   			// no dependencies: OK to run callback immediately and save its return value.
-    		if (dependencyArray.length === 0) {  
-				libraryStorage[libraryName] = callback();
-			// has dependencies: save as obj to access & run callback after all deps are loaded.
-			} else { 
-				libraryStorage[libraryName] = {
-		    		dependencyArray: dependencyArray,
-		    		callback: callback
-		    	};
+    // retrieves stored libraries
+    function loadLibrary(libName) {
+    	if (typeof libraryStorage[libName] === 'object') {
+			var allDepDefined = libraryStorage[libName].dependencyArray.every(function(value){ 
+    			return value in libraryStorage;
+    		});
+    		// run callback only if all lib dependencies are stored. resets lib from obj to return value of callback.
+			if (allDepDefined === true) {
+				var dependencyValues = libraryStorage[libName].dependencyArray.map(function(lib){
+					return libraryStorage[lib];
+				});
+				libraryStorage[libName] = libraryStorage[libName].callback.apply(this, dependencyValues);
 			}
-		}
+			else {
+				throw new ReferenceError('Missing one or more dependencies to run callback.');
+			}
+    	} 
+    	return libraryStorage[libName];
     }
-    window.librarySystem = librarySystem;
-    librarySystem.view = function() {
+	// saves new libraries in storage obj.
+    function storeLibrary(libName, dependencies, callbackFxn) {
+		// no dependencies: OK to run callback immediately
+		if (dependencies.length === 0) {  
+			libraryStorage[libName] = callbackFxn();
+		// has dependencies: save as obj to access & run callback after deps are loaded.
+		} else { 
+			libraryStorage[libName] = {
+	    		dependencyArray: dependencies,
+	    		callback: callbackFxn
+	    	};
+		}
+    } 
+	librarySystem.view = function() {
 		return libraryStorage;
 	};
+    window.librarySystem = librarySystem;
 })();
 
 var viewStorage = librarySystem.view();
-
-// (function(){
-//     var libraryStorage = {};
-
-//     function librarySystem(libraryName, dependencyArray, callback){
-//     	// Case 1: save new libraries in storage obj. 
-//     	if (arguments.length > 1) {  
-//    			// no dependencies: OK to run callback immediately and save its return value.
-//     		if (dependencyArray.length === 0) {  
-// 				libraryStorage[libraryName] = callback();
-// 			// has dependencies: save as obj to access & run callback after all deps are loaded.
-// 			} else { 
-// 				libraryStorage[libraryName] = {
-// 		    		dependencyArray: dependencyArray,
-// 		    		callback: callback
-// 		    	};
-// 			}
-// 		// Case 2: retrieve stored libraries if only libraryName is passed in.
-//     	} else { 
-// 			if (typeof libraryStorage[libraryName] === 'object') {
-// 				// check if all lib dependencies are stored.
-//     			var allDepDefined = libraryStorage[libraryName].dependencyArray.every(function(value){ 
-// 	    			return value in libraryStorage;
-// 	    		});
-// 	     		if (allDepDefined === true) {
-// 	     			// retrieve dependency values to be passed into callback below.
-//     				var dependencyValues = libraryStorage[libraryName].dependencyArray.map(function(lib){
-// 						return libraryStorage[lib];
-// 					});
-// 					// run callback if all deps were stored. resets lib from obj to return value of callback.
-//     				libraryStorage[libraryName] = libraryStorage[libraryName].callback.apply(this, dependencyValues);
-//     			} else {
-//     				throw new ReferenceError('Missing one or more dependencies to run callback.');
-//     			}
-//     		} 
-//     		return libraryStorage[libraryName];
-//     	}
-//     }
-//     window.librarySystem = librarySystem;
-//     librarySystem.view = function() {
-// 		return libraryStorage;
-// 	};
-// })();
-
-// var viewStorage = librarySystem.view();
 
 
 tests({
@@ -193,3 +152,4 @@ tests({
 	}	
 });
 </script>
+</html>
